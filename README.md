@@ -1,4 +1,4 @@
-#Schengen Tracker
+# Schengen Tracker
 Avoid overstaying your visa- keep track of the time you spend in Schengen!
 
 ## Schengen Status
