@@ -13,21 +13,33 @@ type CalendarDayInfo = {
   bounding?: boolean;
 };
 
+// Helper: convert Date → local YYYY-MM-DD (NO UTC)
+const toLocalDateKey = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+// Helper: normalize to local midnight
+const normalizeDate = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
 export default function TripCalendar({ trips, onEdit }: Props) {
-  // Group trips by YYYY-MM-DD
+  // Group trips by local YYYY-MM-DD
   const tripsByDate = useMemo(() => {
     const map: Record<string, Trip[]> = {};
 
     trips.forEach((trip) => {
-      const start = new Date(trip.start);
-      const end = new Date(trip.end);
+      const start = normalizeDate(new Date(trip.start));
+      const end = normalizeDate(new Date(trip.end));
 
       for (
         let d = new Date(start);
         d <= end;
         d.setDate(d.getDate() + 1)
       ) {
-        const key = d.toISOString().split("T")[0];
+        const key = toLocalDateKey(d);
         if (!map[key]) map[key] = [];
         map[key].push(trip);
       }
@@ -37,8 +49,8 @@ export default function TripCalendar({ trips, onEdit }: Props) {
   }, [trips]);
 
   const renderDay = (info: CalendarDayInfo, style: any) => {
-    const date = info.date;
-    const key = date.toISOString().split("T")[0];
+    const date = normalizeDate(info.date);
+    const key = toLocalDateKey(date);
     const dayTrips = tripsByDate[key];
 
     return (
