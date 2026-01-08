@@ -13,6 +13,11 @@ type Props = {
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 
+export function getBreachTripIds(breachSegments: TripBreachSegment[]) {
+  // Returns an array of all trip IDs in breach segments
+  return breachSegments.map((s) => s.trip.id);
+}
+
 function getDaysColor(days: number) {
   if (days <= 90) return "#16A34A";
   if (days <= 120) return "#FACC15";
@@ -26,7 +31,6 @@ export default function BreachStatus({ daysInLast180, breachResult }: Props) {
 
   return (
     <View style={styles.card}>
-
       {/* ================== Schengen Status ================== */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Schengen Status</Text>
@@ -55,7 +59,8 @@ export default function BreachStatus({ daysInLast180, breachResult }: Props) {
           breachResult.breachSegments.map((s) => (
             <View key={s.trip.id} style={styles.breachItem}>
               <Text style={styles.detailText}>
-                {s.trip.name}: {formatDate(s.breachStart)} → {formatDate(s.breachEnd)}</Text>
+                {s.trip.name}: {formatDate(s.breachStart)} → {formatDate(s.breachEnd)}
+              </Text>
             </View>
           ))
         ) : (
@@ -77,9 +82,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
   },
 
-  section: {
-  },
-
+  section: {},
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",

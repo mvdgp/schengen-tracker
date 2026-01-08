@@ -6,12 +6,11 @@ import { Trip } from "../types";
 type Props = {
   trips: Trip[];
   onEdit: (trip: Trip) => void;
+  breachSegments?: { trip: Trip; breachStart: Date; breachEnd: Date }[]; 
+  // ✅ Array of segments where each segment has exact breach start/end
 };
 
-type CalendarDayInfo = {
-  date: Date;
-  bounding?: boolean;
-};
+type CalendarDayInfo = { date: Date; bounding?: boolean };
 
 // Helper: convert Date → local YYYY-MM-DD (NO UTC)
 const toLocalDateKey = (date: Date) => {
@@ -25,20 +24,32 @@ const toLocalDateKey = (date: Date) => {
 const normalizeDate = (date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-export default function TripCalendar({ trips, onEdit }: Props) {
+export default function TripCalendar({
+  trips,
+  onEdit,
+  breachSegments = [],
+}: Props) {
+  // Build a set of YYYY-MM-DD keys that are actually in breach
+  const breachDateSet = useMemo(() => {
+    const set = new Set<string>();
+    breachSegments.forEach(({ breachStart, breachEnd }) => {
+      let d = normalizeDate(new Date(breachStart));
+      const end = normalizeDate(new Date(breachEnd));
+      for (; d <= end; d.setDate(d.getDate() + 1)) {
+        set.add(toLocalDateKey(d));
+      }
+    });
+    return set;
+  }, [breachSegments]);
+
   // Group trips by local YYYY-MM-DD
   const tripsByDate = useMemo(() => {
     const map: Record<string, Trip[]> = {};
-
     trips.forEach((trip) => {
       const start = normalizeDate(new Date(trip.start));
       const end = normalizeDate(new Date(trip.end));
 
-      for (
-        let d = new Date(start);
-        d <= end;
-        d.setDate(d.getDate() + 1)
-      ) {
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const key = toLocalDateKey(d);
         if (!map[key]) map[key] = [];
         map[key].push(trip);
@@ -57,17 +68,26 @@ export default function TripCalendar({ trips, onEdit }: Props) {
       <View style={[styles.dayCell, style?.container]}>
         <Text style={styles.dayNumber}>{date.getDate()}</Text>
 
-        {dayTrips?.map((trip) => (
-          <Pressable
-            key={trip.id}
-            style={styles.tripBadge}
-            onPress={() => onEdit(trip)}
-          >
-            <Text style={styles.tripText} numberOfLines={1}>
-              {trip.name}
-            </Text>
-          </Pressable>
-        ))}
+        {dayTrips?.map((trip) => {
+          const isBreaching = breachDateSet.has(key);
+          return (
+            <Pressable
+              key={trip.id}
+              style={[
+                styles.tripBadge,
+                isBreaching && styles.breachBadge, // ✅ Only red if this day is in breach
+              ]}
+              onPress={() => onEdit(trip)}
+            >
+              <Text
+                style={[styles.tripText, isBreaching && styles.breachText]}
+                numberOfLines={1}
+              >
+                {trip.name}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
     );
   };
@@ -81,13 +101,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
   },
-
   dayNumber: {
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 2,
   },
-
   tripBadge: {
     backgroundColor: "#2563EB",
     borderRadius: 6,
@@ -96,10 +114,16 @@ const styles = StyleSheet.create({
     marginTop: 2,
     width: "90%",
   },
-
   tripText: {
     fontSize: 10,
     color: "#FFF",
     textAlign: "center",
+  },
+  breachBadge: {
+    backgroundColor: "#FEE2E2", // Light red background
+  },
+  breachText: {
+    color: "#DC2626", // Red text
+    fontWeight: "600",
   },
 });

@@ -12,6 +12,7 @@ import {
 
 import { Trip } from "./types";
 import { checkForBreaches, countDaysLast180 } from "./utils/schengen";
+import { formatDate } from "./utils/date";
 
 import BreachStatus from "./components/BreachStatus";
 import TripList from "./components/TripList";
@@ -45,6 +46,16 @@ export default function App() {
   const breachResult = checkForBreaches(trips);
   const daysInLast180 = countDaysLast180(trips);
 
+  // 🔹 Trips that directly caused a breach
+  const breachTripIds = breachResult.breachSegments.map((s) => s.trip.id);
+
+  // 🔹 Convert to the format TripCalendar expects
+  const breachSegmentsForCalendar = breachResult.breachSegments.map((s) => ({
+    trip: s.trip,
+    breachStart: new Date(s.breachStart),
+    breachEnd: new Date(s.breachEnd),
+  }));
+
   const handleEdit = (trip: Trip) => {
     setEditingTrip(trip);
     setIsModalOpen(true);
@@ -68,10 +79,7 @@ export default function App() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SafeAreaView style={styles.safeArea} edges={["top"]}>
             <ScrollView contentContainerStyle={styles.container}>
-              {/* ===== Title ===== */}
               <Text style={styles.title}>Schengen Tracker</Text>
-
-              {/* ===== Title underline ===== */}
               <View style={styles.titleLine} />
 
               <BreachStatus
@@ -82,15 +90,19 @@ export default function App() {
               {view === "list" ? (
                 <TripList
                   trips={trips}
+                  breachTripIds={breachTripIds}
                   onEdit={handleEdit}
                   onDelete={(id) =>
                     setTrips((prev) => prev.filter((t) => t.id !== id))
                   }
                 />
               ) : (
-                // Calendar wrapper matches BreachStatus width
                 <View style={styles.calendarWrapper}>
-                  <TripCalendar trips={trips} onEdit={handleEdit} />
+                  <TripCalendar
+                    trips={trips}
+                    breachSegments={breachSegmentsForCalendar} // ✅ Updated prop
+                    onEdit={handleEdit}
+                  />
                 </View>
               )}
             </ScrollView>
@@ -118,17 +130,8 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-  },
-
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 160,
-  },
-
+  safeArea: { flex: 1, backgroundColor: "#F9FAFB" },
+  container: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 160 },
   title: {
     fontSize: 28,
     marginTop: 12,
@@ -136,7 +139,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#111827",
   },
-
   titleLine: {
     alignSelf: "center",
     width: SCREEN_WIDTH * 0.33,
@@ -146,9 +148,5 @@ const styles = StyleSheet.create({
     marginTop: 26,
     marginBottom: 26,
   },
-
-  calendarWrapper: {
-    width: SCREEN_WIDTH - 46,
-    alignSelf: "center",
-  },
+  calendarWrapper: { width: SCREEN_WIDTH - 46, alignSelf: "center" },
 });
